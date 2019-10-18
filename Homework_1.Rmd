@@ -1,0 +1,292 @@
+---
+title: "Homework 1"
+author: "Ayberk AKGÜN"
+date: "18/10/2019"
+output: html_document
+---
+For the tasks, I will mainly use tidyverse, data.table and ggplot2 libraries.
+```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+library(data.table)
+library(tidyr)
+library(ggplot2)
+```
+#A) Task 1
+For task 1 I use "matches" data which can be found on https://drive.google.com/drive/u/4/folders/1SkhJNE3ckir74oPMXTP7T3hUD5ZdB501. I read the match results from directory and filter only the English Premier League games which have the id of "148".
+```{r, chunk-label, results='hide', fig.height=4}
+matches<-read.csv("/Users/ayberkakgun/Desktop/bets/matches.csv")
+matches_premier<- matches %>%
+  filter(league_id==148 & match_status=="Finished") %>%
+  as.data.table()
+```
+
+### 1. Drawing Histograms 
+
+I plot the histogram of hometeam score with hist function and arrange the axes:
+```{r hist1,}
+hist(matches_premier$match_hometeam_score, 
+     main="Home Score(goals)", 
+     xlab="Home Goals", 
+     ylab="Number of Games",
+     # xlim=c(-1,7),
+     col="blue",
+     las=1,
+     breaks=8)
+```
+
+With the same method, histogram of away score:
+```{r hist2}
+hist(matches_premier$match_awayteam_score, 
+     main="Home Score(goals)", 
+     xlab="Home Goals", 
+     ylab="Number of Games",
+     border="black",
+     # xlim=c(min,max),
+     col="blue",
+     las=1,
+     breaks=8)
+```
+
+and the histogram of home - away score:
+```{r hist3}
+hist(matches_premier$match_hometeam_score-matches_premier$match_awayteam_score, 
+     main="Home Score(goals) - Away Score(goals)", 
+     xlab="Home - Away Goals", 
+     ylab="Number of Games",
+     # xlim=c(min,max),
+     # ylim=c(0,max(ypois_homeaway)),
+     col="blue")
+```
+
+I calculate expected number of games for each goal number, using the sample mean as the distribution mean in the interval between min and max. Then i draw the line on histogram:
+
+```{r hist1_withline,}
+mean_home<-mean(matches_premier$match_hometeam_score,na.rm = TRUE)
+count_home<-na.omit(matches_premier$match_hometeam_score) %>% length()
+min<-na.omit(matches_premier$match_hometeam_score) %>% min()
+max<-na.omit(matches_premier$match_hometeam_score) %>% max()
+ypois_home<-dpois(min:max,mean_home)*count_home
+hist(matches_premier$match_hometeam_score, 
+     main="Home Score(goals)", 
+     xlab="Home Goals", 
+     ylab="Number of Games",
+     # xlim=c(-1,7),
+     col="blue",
+     las=1,
+     breaks=8)
+lines(x=min:max,y=ypois_home,col="red",lwd=2)
+```
+
+I follow the same procedure for away goals:
+
+```{r hist2_withline,}
+mean_away<-mean(matches_premier$match_awayteam_score,na.rm = TRUE)
+count_away<-na.omit(matches_premier$match_awayteam_score) %>% length()
+min<-
+  na.omit(matches_premier$match_awayteam_score) %>% min()
+max<-na.omit(matches_premier$match_awayteam_score) %>% max()
+ypois_away<-dpois(min:max,mean_away)*count_away
+hist(matches_premier$match_awayteam_score, 
+     main="Home Score(goals)", 
+     xlab="Home Goals", 
+     ylab="Number of Games",
+     border="black",
+     # xlim=c(min,max),
+     col="blue",
+     las=1,
+     breaks=8)
+lines(x=min:max,y=ypois_away,col="red",lwd=2)
+```
+
+
+```{r hist3_withline,}
+mean_homeaway<-na.omit(matches_premier$match_hometeam_score-matches_premier$match_awayteam_score) %>% mean(.,na.rm = TRUE)
+std_homeaway<-sd(na.omit(matches_premier$match_hometeam_score-matches_premier$match_awayteam_score))
+count_homeaway<-na.omit(matches_premier$match_awayteam_score--matches_premier$match_awayteam_score) %>% length()
+min<-
+  na.omit(matches_premier$match_hometeam_score-matches_premier$match_awayteam_score) %>% min()
+x <- seq(-10, 10, length=10000)
+y <- dnorm(x, mean=mean_homeaway, sd=std_homeaway)*count_homeaway
+max<-na.omit(matches_premier$match_hometeam_score-matches_premier$match_awayteam_score) %>% max()
+ypois_homeaway<-dnorm(min:max,mean_homeaway)*count_homeaway
+hist(matches_premier$match_hometeam_score-matches_premier$match_awayteam_score, 
+     main="Home Score(goals) - Away Score(goals)", 
+     xlab="Home - Away Goals", 
+     ylab="Number of Games",
+     # xlim=c(min,max),
+     # ylim=c(0,max(ypois_homeaway)),
+     col="blue")
+lines(x,y,col="red")
+```
+
+#Task 2
+
+For Task 2, I use bets data this time, i read from directory and filter the 4 bookmakers.
+```{r,}
+bets<-as.data.table(read.csv("/Users/ayberkakgun/Desktop/bets/bets.csv")) %>%
+filter(odd_bookmakers=="Marsbet" | odd_bookmakers=="Leonbets" |
+         odd_bookmakers=="5Dimes" | odd_bookmakers=="Betclic" | odd_bookmakers=="NordicBet")
+head(bets)
+```
+
+I filter for home win, draw and away win odds; cahnge from long to wide by combining odds of a game into one line with spread function.
+
+```{r,}
+bets_long <- bets %>%
+  filter(variable=="odd_1" | variable=="odd_x" | variable=="odd_2") %>%
+  spread(variable, value) %>%
+  as.data.table()
+head(bets_long)
+```
+
+##1.
+I calculate probabilities as 1/odds and add them as new cells, (with a little practice of data.table)
+
+```{r,}
+bets_long[,p1:=1/odd_1]
+bets_long[,p0:=1/odd_x]
+bets_long[,p2:=1/odd_2]
+```
+
+##2.
+Then I normalize,
+
+```{r,}
+bets_long[,psum:=p1+p2+p0]
+bets_long[,p11:=p1/psum]
+bets_long[,p00:=p0/psum]
+bets_long[,p22:=p2/psum]
+bets_long[,p12:=p11-p22]
+```
+
+Let's check the plot of P(home win) – P(away win) on x-axis and P (tie) on y axis, both calculated from bet odds.
+
+```{r,}
+ggplot(bets_long)+aes(x=p1-p2,y=p0)+geom_point()+xlab("P(home win) – P(away win)")+ylab("P (tie)")+ggtitle("P(home win) – P(away win), P (tie)")
+ggplot(bets_long)+aes(x=p11-p22,y=p00)+geom_point()+xlab("P(home win) – P(away win), Normalized")+ylab("P (tie)")+ggtitle("P(home win) – P(away win), P (tie) - Normalized")
+```
+
+##2.
+Then comes the tricky part. Let's construct bins for P(home) - P(away) with 0.2 intervals.
+
+```{r, warning=FALSE}
+matches_premier[,matchresult:=match_hometeam_score-match_awayteam_score]
+
+bets_short<-bets_long %>%
+  select(odd_bookmakers, match_id, p12, p0) %>%
+       mutate(bin = case_when(p12 <= 1 & p12 > 0.8 ~ 1, 
+                            p12 <= 0.8 & p12 > 0.6 ~ 2, 
+                            p12 <= 0.6 & p12 > 0.4 ~ 3, 
+                            p12 <= 0.4 & p12 > 0.2 ~ 4, 
+                            p12 <= 0.2 & p12 > 0 ~ 5, 
+                            p12 <= 0 & p12 > -0.2 ~ 6, 
+                            p12 <= -0.2 & p12 > -0.4 ~ 7,
+                            p12 <= -0.4 & p12 > -0.6 ~ 8, 
+                            p12 <= -0.6 & p12 > -0.8 ~ 9, 
+                            p12 <= -0.8 & p12 > -1 ~ 10, 
+                             TRUE ~ 0))
+```
+
+By dividing the actual games ended as draw to total number of games in the bin, I calculate the sample probability of draw in the corresponding bin for all matches.
+
+```{r, warning=FALSE}
+comparison<-matches_premier %>%
+  select(match_id,matchresult) %>%
+  right_join(bets_short,by="match_id")
+
+bin_count<-comparison %>%
+  filter(matchresult==1|matchresult==0|matchresult==2) %>%
+  group_by(odd_bookmakers,bin) %>% 
+  count()
+
+bin_result<-comparison %>%
+  filter(matchresult==0) %>%
+  group_by(odd_bookmakers,bin) %>% 
+  count() %>%
+  ungroup() %>%
+  right_join(bin_count,by=c("bin","odd_bookmakers"))  %>%
+  mutate(prob=n.x/n.y) %>%
+  select(odd_bookmakers,prob,bin)
+  
+  graph<-bets_short %>%
+  right_join(bin_result,by=c("bin","odd_bookmakers"))
+```
+  
+Then the only thing left is to put on graph. P(home) - P(away) on x axis and sample probabilities on y axis, for each bookmaker.  
+  
+```{r, warning=FALSE}  
+  filter(graph, odd_bookmakers=="Marsbet") %>%
+  ggplot()+aes(x=p12,y=prob)+geom_point()+xlab("P(home win) – P(away win)")+ylab("P (tie) - sample")+ggtitle("P(home win) – P(away win), P (tie)")
+  filter(graph, odd_bookmakers=="Leonbets") %>%
+  ggplot()+aes(x=p12,y=prob)+geom_point()+xlab("P(home win) – P(away win)")+ylab("P (tie) - sample ")+ggtitle("P(home win) – P(away win), P (tie)")
+  filter(graph, odd_bookmakers=="5Dimes") %>%
+  ggplot()+aes(x=p12,y=prob)+geom_point()+xlab("P(home win) – P(away win)")+ylab("P (tie) - sample")+ggtitle("P(home win) – P(away win), P (tie)")
+  filter(graph, odd_bookmakers=="Betclic") %>%
+  ggplot()+aes(x=p12,y=prob)+geom_point()+xlab("P(home win) – P(away win)")+ylab("P (tie) - sample")+ggtitle("P(home win) – P(away win), P (tie)")
+  filter(graph, odd_bookmakers=="NordicBet") %>%
+  ggplot()+aes(x=p12,y=prob)+geom_point()+xlab("P(home win) – P(away win)")+ylab("P (tie) - sample")+ggtitle("P(home win) – P(away win), P (tie)")
+
+```
+
+#Task 3
+
+I use booking data to find games, where happened a red card in the first 15 minutes. Then  I combine it with the games where an extra time goal affected the score. Be careful an extra score that didn't change the result shouldn't be removed. Remaining matches are the "clean matches":
+
+```{r warning=FALSE}
+booking<-read.csv("/Users/ayberkakgun/Desktop/bets/booking.csv") %>%
+  filter(card=="red card" & as.numeric(as.character(time))<=15) %>%
+  select(match_id)
+
+matches2<-read.csv("/Users/ayberkakgun/Desktop/bets/matches.csv") %>% filter(league_id==148) %>%
+  as.data.table()
+matches2[,matchresult:=match_hometeam_score-match_awayteam_score]
+matches2[,matchresult2:=match_hometeam_score+match_hometeam_extra_score-match_awayteam_score-match_awayteam_extra_score]
+    question_matches<-matches2 %>%
+  filter(matchresult!=matchresult2 & matchresult==0 | matchresult2==0) %>%
+      select(match_id) %>%
+    union(booking)
+
+    clean_matches<-matches %>%
+      filter(!(matches$match_id %in% question_matches)) %>%
+      as.data.table()
+    clean_matches[,matchresult:=match_hometeam_score-match_awayteam_score]
+    
+```
+
+With the same method in Task 3, this time only with these "clean matches":
+
+```{r warning=FALSE}
+comparison2<-clean_matches %>%
+  select(match_id,matchresult) %>%
+  right_join(bets_short,by="match_id")
+
+bin_count<-comparison %>%
+  filter(matchresult==1|matchresult==0|matchresult==2) %>%
+  group_by(odd_bookmakers,bin) %>% 
+  count()
+bin_result<-comparison %>%
+  filter(matchresult==0) %>%
+  group_by(odd_bookmakers,bin) %>% 
+  count() %>%
+  ungroup() %>%
+  right_join(bin_count,by=c("bin","odd_bookmakers"))  %>%
+  mutate(prob=n.x/n.y) %>%
+  select(odd_bookmakers,prob,bin)
+  
+  graph<-bets_short %>%
+  right_join(bin_result,by=c("bin","odd_bookmakers"))
+  
+  filter(graph, odd_bookmakers=="Marsbet") %>%
+  ggplot()+aes(x=p12,y=prob)+geom_point()+xlab("P(home win) – P(away win)")+ylab("P (tie) - sample")+ggtitle("P(home win) – P(away win), P (tie)")
+  filter(graph, odd_bookmakers=="Leonbets") %>%
+  ggplot()+aes(x=p12,y=prob)+geom_point()+xlab("P(home win) – P(away win)")+ylab("P (tie) - sample ")+ggtitle("P(home win) – P(away win), P (tie)")
+  filter(graph, odd_bookmakers=="5Dimes") %>%
+  ggplot()+aes(x=p12,y=prob)+geom_point()+xlab("P(home win) – P(away win)")+ylab("P (tie) - sample")+ggtitle("P(home win) – P(away win), P (tie)")
+  filter(graph, odd_bookmakers=="Betclic") %>%
+  ggplot()+aes(x=p12,y=prob)+geom_point()+xlab("P(home win) – P(away win)")+ylab("P (tie) - sample")+ggtitle("P(home win) – P(away win), P (tie)")
+  filter(graph, odd_bookmakers=="NordicBet") %>%
+  ggplot()+aes(x=p12,y=prob)+geom_point()+xlab("P(home win) – P(away win)")+ylab("P (tie) - sample")+ggtitle("P(home win) – P(away win), P (tie)")
+```
+
+
+
