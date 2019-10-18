@@ -3,6 +3,7 @@ title: "Homework 1"
 author: "Ayberk AKGÜN"
 date: "18/10/2019"
 output: html_document
+permalink : https://octocat.github.io/homework_1
 ---
 ```{r, include=FALSE}
 library(tidyverse)
