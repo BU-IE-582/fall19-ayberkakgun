@@ -230,26 +230,34 @@ Then the only thing left is to put on graph. P(home) - P(away) on x axis and sam
 
 #Task 3
 
-I use booking data to find games, where happened a red card in the first 15 minutes. Then  I combine it with the games where an extra time goal affected the score. Be careful an extra score that didn't change the result shouldn't be removed. Remaining matches are the "clean matches":
+I use booking data to find games, where happened a red card in the first 15 minutes. Number of excluded matches are for red card is as follows:
 
 ```{r warning=FALSE}
 booking<-read.csv("/Users/ayberkakgun/Desktop/bets/booking.csv") %>%
   filter(card=="red card" & as.numeric(as.character(time))<=15) %>%
   select(match_id)
 
-matches2<-read.csv("/Users/ayberkakgun/Desktop/bets/matches.csv") %>% filter(league_id==148) %>%
-  as.data.table()
-matches2[,matchresult:=match_hometeam_score-match_awayteam_score]
-matches2[,matchresult2:=match_hometeam_score+match_hometeam_extra_score-match_awayteam_score-match_awayteam_extra_score]
-    question_matches<-matches2 %>%
+summary(matches_premier$match_id %in% booking$match_id==TRUE)
+```
+
+Then  I combine it with the games where an extra time goal affected the score. Be careful an extra score that didn't change the result shouldn't be removed. Remaining matches are the "clean matches". Number of excluded matches in total:
+
+```{r warning=FALSE}
+
+# matches2<-read.csv("/Users/ayberkakgun/Desktop/bets/matches.csv") %>% filter(league_id==148) %>%
+#   as.data.table()
+# matches_premier[,matchresult:=match_hometeam_score-match_awayteam_score]
+matches_premier[,matchresult2:=match_hometeam_score+match_hometeam_extra_score-match_awayteam_score-match_awayteam_extra_score]
+    question_matches<-matches_premier %>%
   filter(matchresult!=matchresult2 & matchresult==0 | matchresult2==0) %>%
       select(match_id) %>%
     union(booking)
 
-    clean_matches<-matches %>%
-      filter(!(matches$match_id %in% question_matches)) %>%
+    clean_matches<-matches_premier %>%
+      filter(!(matches_premier$match_id %in% question_matches$match_id)) %>%
       as.data.table()
-    clean_matches[,matchresult:=match_hometeam_score-match_awayteam_score]
+    
+    summary(matches_premier$match_id %in% question_matches$match_id==TRUE)
     
 ```
 
@@ -288,5 +296,5 @@ bin_result<-comparison %>%
   ggplot()+aes(x=p12,y=prob)+geom_point()+xlab("P(home win) – P(away win)")+ylab("P (tie) - sample")+ggtitle("P(home win) – P(away win), P (tie)")
 ```
 
-
+My key takeaway from this analysis is that bookmakers underestimate the draw probability, when winning probability of home team is much higher than the away team's and actually that makes sense.
 
