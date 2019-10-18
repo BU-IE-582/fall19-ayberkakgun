@@ -1,3 +1,3 @@
 index
 
-[HW1](Homework1.Rmd)
+[HW1](Homework1.html)
