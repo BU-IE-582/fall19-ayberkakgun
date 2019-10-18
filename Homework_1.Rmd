@@ -11,7 +11,7 @@ library(data.table)
 library(tidyr)
 library(ggplot2)
 ```
-#A) Task 1
+#Task 1
 For task 1 I use "matches" data which can be found on https://drive.google.com/drive/u/4/folders/1SkhJNE3ckir74oPMXTP7T3hUD5ZdB501. I read the match results from directory and filter only the English Premier League games which have the id of "148".
 ```{r, chunk-label, results='hide', fig.height=4}
 matches<-read.csv("/Users/ayberkakgun/Desktop/bets/matches.csv")
