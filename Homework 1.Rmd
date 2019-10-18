@@ -3,7 +3,7 @@ title: "Homework 1"
 author: "Ayberk AKGÜN"
 date: "18/10/2019"
 output: html_document
-permalink : https://octocat.github.io/homework_1
+permalink : https://bu-ie-582.github.io/fall19-ayberkakgun/Homework_2/
 ---
 ```{r, include=FALSE}
 library(tidyverse)
