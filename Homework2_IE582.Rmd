@@ -1,0 +1,115 @@
+---
+title: "IE 582, Homework 2"
+author: "Ayberk AKGÜN"
+date: "10/31/2019"
+output: html_document
+---
+
+The libraries I will use:
+
+```{r cars, message=FALSE, warning=FALSE}
+library(data.table)
+library(dplyr)
+library(jpeg)
+library(imager)
+library(factoextra)
+```
+
+I read the data and apply PCA:
+
+```{r pressure}
+raw_data <- read.csv("/Users/ayberkakgun/Desktop/Musk1.csv") %>% as.data.frame()
+features<-scale(raw_data[3:168])
+labels<-raw_data[1:2]
+colnames(labels)<-c("BagClass","BagId")
+pca<-princomp(features)
+str(pca)
+eigenvalue<-get_eigenvalue(pca)
+head(eigenvalue,10)
+```
+
+#a
+First 5 components explain more than 70 % of the variability and cumulative contribution gets smaller.
+
+```{r}
+eig<-eigenvalue$variance.percent[eigenvalue$cumulative.variance.percent<85]
+l<-length(eig)
+ggplot()+
+    geom_col(aes(x=1:l,y=eig))+
+    geom_line(aes(x=1:l,y=eig,col="red"))
+
+```
+
+If we check plot first two components we see the two dimensions are not enough to distinguish bag labels:
+
+```{r}
+plot(x=pca$scores[,1],y=pca$scores[,2],col=raw_data$X1+1)
+abline(h=0,v=0,lty=3)
+```
+
+I calculate distance matrix and perform MDS on it, without forgetting to scale the data.
+
+```{r}
+distanceMat<-dist(features,upper=T) %>% as.matrix()
+mds<-cmdscale(distanceMat)
+plot(mds[,1],mds[,2],
+     # main='Location',
+     xlab='', ylab='',
+    col=raw_data$X1+1)
+```
+
+#b 
+Once again perform PCA this time on aggregated data,
+
+```{r}
+data_agg<-aggregate(raw_data,by=list(raw_data$X1.1),FUN=mean)
+features_agg<-scale(data_agg[4:169])
+pca_agg<-prcomp(features_agg)
+str(pca_agg)
+eigenvalue_agg<-get_eigenvalue(pca_agg)
+head(eigenvalue_agg,10)
+plot(x=pca_agg$x[,1],y=pca_agg$x[,2],col=data_agg$X1+1)
+```
+
+Same MDS operation on aggregated data,
+
+```{r}
+distanceMat_agg<-dist(features_agg,upper=T) %>% as.matrix()
+mds_agg<-cmdscale(distanceMat_agg)
+plot(mds_agg[,1],mds_agg[,2],
+     # main='Location',
+     xlab='', ylab='',
+     col=data_agg$X1+1)
+```
+
+#c
+
+
+
+#Task 2
+
+```{r}
+img <- readJPEG("/Users/ayberkakgun/Desktop/profil2.jpg")
+plot(c(0, 256), c(0, 256), type = "n", xlab = "", ylab = "")
+rasterImage(img, 0, 0, 256, 256)
+```
+I calculate distance matrix and perform MDS on it, without forgetting to scale the data.
+
+```{r}
+distanceMat<-dist(features,upper=T) %>% as.matrix()
+mds<-cmdscale(distanceMat)
+plot(mds[,1],mds[,2],
+     # main='Location',
+     xlab='', ylab='',
+    col=raw_data$X1+1)
+```
+I calculate distance matrix and perform MDS on it, without forgetting to scale the data.
+
+```{r}
+distanceMat<-dist(features,upper=T) %>% as.matrix()
+mds<-cmdscale(distanceMat)
+plot(mds[,1],mds[,2],
+     # main='Location',
+     xlab='', ylab='',
+    col=raw_data$X1+1)
+```
