@@ -1,0 +1,155 @@
+---
+title: "IE 582, Homework 2"
+author: "Ayberk AKGÜN"
+date: "10/31/2019"
+output: html_document
+---
+
+The libraries I will use:
+
+```{r cars, message=FALSE, warning=FALSE}
+library(data.table)
+library(dplyr)
+library(jpeg)
+library(imager)
+library(factoextra)
+```
+
+I read the data and apply PCA:
+
+```{r pressure}
+raw_data <- read.csv("/Users/ayberkakgun/Desktop/Musk1.csv") %>% as.data.frame()
+features<-scale(raw_data[3:168])
+labels<-raw_data[1:2]
+colnames(labels)<-c("BagClass","BagId")
+pca<-princomp(features)
+str(pca)
+eigenvalue<-get_eigenvalue(pca)
+head(eigenvalue,10)
+```
+
+#a
+First 5 components explain more than 70 % of the variability and cumulative contribution gets smaller.
+
+```{r}
+eig<-eigenvalue$variance.percent[eigenvalue$cumulative.variance.percent<85]
+l<-length(eig)
+ggplot()+
+    geom_col(aes(x=1:l,y=eig))+
+    geom_line(aes(x=1:l,y=eig,col="red"))
+
+```
+
+If we check plot first two components we see the two dimensions are not enough to distinguish bag labels:
+
+```{r}
+plot(x=pca$scores[,1],y=pca$scores[,2],col=raw_data$X1+1)
+abline(h=0,v=0,lty=3)
+```
+
+I calculate distance matrix and perform MDS on it, without forgetting to scale the data.
+
+```{r}
+distanceMat<-dist(features,upper=T) %>% as.matrix()
+mds<-cmdscale(distanceMat)
+plot(mds[,1],mds[,2],
+     # main='Location',
+     xlab='', ylab='',
+    col=raw_data$X1+1)
+```
+
+#b 
+Once again perform PCA this time on aggregated data,
+
+```{r}
+data_agg<-aggregate(raw_data,by=list(raw_data$X1.1),FUN=mean)
+features_agg<-scale(data_agg[4:169])
+pca_agg<-prcomp(features_agg)
+str(pca_agg)
+eigenvalue_agg<-get_eigenvalue(pca_agg)
+head(eigenvalue_agg,10)
+plot(x=pca_agg$x[,1],y=pca_agg$x[,2],col=data_agg$X1+1)
+```
+
+Same MDS operation on aggregated data,
+
+```{r}
+distanceMat_agg<-dist(features_agg,upper=T) %>% as.matrix()
+mds_agg<-cmdscale(distanceMat_agg)
+plot(mds_agg[,1],mds_agg[,2],
+     # main='Location',
+     xlab='', ylab='',
+     col=data_agg$X1+1)
+```
+
+#c
+
+
+
+#Task 2
+
+I read my image, and plot it.
+
+```{r}
+img <- readJPEG("/Users/ayberkakgun/Desktop/profil2.jpg")
+plot(c(0, 256), c(0, 256), type = "n", xlab = "", ylab = "")
+rasterImage(img, 0, 0, 256, 256)
+```
+
+I split the channels and plot them seperately.
+
+```{r}
+r<-img[1:256,1:256,1]
+g<-img[1:256,1:256,2]
+b<-img[1:256,1:256,3]
+red_palette <- colorRampPalette(c("black","red"))
+blue_palette <- colorRampPalette(c("black","blue"))
+green_palette <- colorRampPalette(c("black","green")) 
+par(mfrow=c(1,3))
+# red_palet
+image(r,col=red_palette(256),main="red",axes = F)
+image(g,col=green_palette(256),main="green",axes=F)
+image(b,col=blue_palette(256),main="blue",axes=F)
+```
+
+I add noise to my image.
+
+```{r}
+minx<-min(img)
+maxx<-max(img)*0.1
+noise<-matrix(runif(65536,min=minx,max=maxx),256)
+r2<-r+noise
+r2[r2>1]=1
+g2<-g+noise
+g2[g2>1]=1
+b2<-b+noise
+b2[b2>1]=1
+# img2 <- rgb(r2, g2, b2)
+img2<-img
+img2[,,1]<-r2
+img2[,,2]<-g2
+img2[,,3]<-b2
+plot(c(0, 256), c(0, 256), type = "n", xlab = "", ylab = "")
+rasterImage(img2, 0, 0, 256, 256)
+```
+
+I construct the patches and perform PCA on them.
+
+```{r}
+imgr <- load.image("/Users/ayberkakgun/Desktop/profil2.jpg")
+imgrr<-grayscale(imgr)
+vectors <-matrix(nrow=53824,ncol = 625)
+k<-1
+for (i in 1:232){
+    for(j in 1:232){
+        vectors[k,]<-imgrr[i:(i+24),j:(j+24)] %>% as.vector()
+        k<-k+1
+    }
+    }
+
+# pca_img<-princomp(vectors)
+```
+
+
+
+
