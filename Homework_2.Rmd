@@ -104,9 +104,8 @@ g<-img[1:256,1:256,2]
 b<-img[1:256,1:256,3]
 red_palette <- colorRampPalette(c("black","red"))
 blue_palette <- colorRampPalette(c("black","blue"))
-green_palette <- colorRampPalette(c("black","green")) 
-par(mfrow=c(1,3))
-# red_palet
+green_palette <- colorRampPalette(c("black","green"))
+
 image(r,col=red_palette(256),main="red",axes = F)
 image(g,col=green_palette(256),main="green",axes=F)
 image(b,col=blue_palette(256),main="blue",axes=F)
@@ -133,7 +132,7 @@ plot(c(0, 256), c(0, 256), type = "n", xlab = "", ylab = "")
 rasterImage(img2, 0, 0, 256, 256)
 ```
 
-I construct the patches and perform PCA on them.
+<!-- I construct the patches and perform PCA on them. -->
 
 ```{r}
 imgr <- load.image("/Users/ayberkakgun/Desktop/profil2.jpg")
@@ -146,10 +145,31 @@ for (i in 1:232){
         k<-k+1
     }
     }
-
-# pca_img<-princomp(vectors)
+pca_img<-princomp(vectors)
+eigenvalue_img<-get_eigenvalue(pca_img)
+head(eigenvalue_img,5)
+plot(eigenvalue_img$cumulative.variance.percent)
 ```
 
 
+```{r}
+score1 <- pca_img$scores[,1]
+score2 <- pca_img$scores[,2]
+score3 <- pca_img$scores[,3]
+
+score1_scaled <- (score1 - min(score1)) / (max(score1)-min(score1))
+score2_scaled <- (score2 - min(score2)) / (max(score2)-min(score2))
+score3_scaled<- (score3 - min(score3)) / (max(score3)-min(score3))
+
+imgp1 <- matrix(score1_scaled, 232, byrow=TRUE)
+imgp2 <- matrix(score2_scaled, 232, byrow=TRUE)
+imgp3 <- matrix(score3_scaled, 232, byrow=TRUE)
+
+image(imgp1,col=gray.colors(256),main="",axes = F)
+image(imgp2,col=gray.colors(256),main="",axes = F)
+image(imgp3,col=gray.colors(256),main="",axes = F)
+
+
+```
 
 
