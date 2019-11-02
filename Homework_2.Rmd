@@ -25,11 +25,11 @@ colnames(labels)<-c("BagClass","BagId")
 pca<-princomp(features)
 str(pca)
 eigenvalue<-get_eigenvalue(pca)
-head(eigenvalue,10)
+head(eigenvalue,15)
 ```
 
 #a
-First 5 components explain more than 70 % of the variability and cumulative contribution gets smaller.
+It takes 12 components to explain 80% of the variability and cumulative contribution gets smaller.
 
 ```{r}
 eig<-eigenvalue$variance.percent[eigenvalue$cumulative.variance.percent<85]
@@ -37,29 +37,27 @@ l<-length(eig)
 ggplot()+
     geom_col(aes(x=1:l,y=eig))+
     geom_line(aes(x=1:l,y=eig,col="red"))
-
 ```
 
-If we check plot first two components we see the two dimensions are not enough to distinguish bag labels:
+If we check the plot for two components, we see two dimensions are not enough to distinguish bag labels in space:
 
 ```{r}
 plot(x=pca$scores[,1],y=pca$scores[,2],col=raw_data$X1+1)
 abline(h=0,v=0,lty=3)
 ```
 
-I calculate distance matrix and perform MDS on it, without forgetting to scale the data.
+I calculate distance matrix and perform MDS on it, without forgetting to scale the data. This plot confirms with another method, two components won't be enough to explain variability and distinguish bag labels.
 
 ```{r}
 distanceMat<-dist(features,upper=T) %>% as.matrix()
 mds<-cmdscale(distanceMat)
 plot(mds[,1],mds[,2],
-     # main='Location',
-     xlab='', ylab='',
+     xlab='Component 1', ylab='Component 2',
     col=raw_data$X1+1)
 ```
 
 #b 
-Once again perform PCA this time on aggregated data,
+Once again perform PCA this time on aggregated data, this time 6 components are enough to explain 80% of variability. Hence the points are distributed more heterogeneously. 
 
 ```{r}
 data_agg<-aggregate(raw_data,by=list(raw_data$X1.1),FUN=mean)
@@ -68,10 +66,13 @@ pca_agg<-prcomp(features_agg)
 str(pca_agg)
 eigenvalue_agg<-get_eigenvalue(pca_agg)
 head(eigenvalue_agg,10)
-plot(x=pca_agg$x[,1],y=pca_agg$x[,2],col=data_agg$X1+1)
+plot(x=pca_agg$x[,1],y=pca_agg$x[,2],
+     xlab="Component 1",
+     ylab="Component 2",
+     col=data_agg$X1+1)
 ```
 
-Same MDS operation on aggregated data,
+Same MDS operation on aggregated data, results in a similar plot with PCA. Most of the red points stay in a triangular area of the space.
 
 ```{r}
 distanceMat_agg<-dist(features_agg,upper=T) %>% as.matrix()
@@ -81,10 +82,6 @@ plot(mds_agg[,1],mds_agg[,2],
      xlab='', ylab='',
      col=data_agg$X1+1)
 ```
-
-#c
-
-
 
 #Task 2
 
@@ -111,7 +108,7 @@ image(g,col=green_palette(256),main="green",axes=F)
 image(b,col=blue_palette(256),main="blue",axes=F)
 ```
 
-I add noise to my image.
+I add noise to my image by random distribution, control that with noise numbers don't exceed 1 and display the image with noise.
 
 ```{r}
 minx<-min(img)
@@ -132,7 +129,7 @@ plot(c(0, 256), c(0, 256), type = "n", xlab = "", ylab = "")
 rasterImage(img2, 0, 0, 256, 256)
 ```
 
-<!-- I construct the patches and perform PCA on them. -->
+I construct the patches and perform PCA on them.
 
 ```{r}
 imgr <- load.image("/Users/ayberkakgun/Desktop/profil2.jpg")
@@ -151,6 +148,7 @@ head(eigenvalue_img,5)
 plot(eigenvalue_img$cumulative.variance.percent)
 ```
 
+To plot the image, I first scale them between 0 and 1 and then construct images for first, second and third components.They give somewhat a good indication about image, better to worse when we go  from first to third component; as expected.
 
 ```{r}
 score1 <- pca_img$scores[,1]
@@ -172,4 +170,24 @@ image(imgp3,col=gray.colors(256),main="",axes = F)
 
 ```
 
+Same procedure for eigenvalues, which sure gives worst representation of the image; only an idea about where the object in the image is concentrated. 
+
+```{r}
+eig1<-pca_img$loadings[,1]
+eig2<-pca_img$loadings[,2]
+eig3<-pca_img$loadings[,3]
+
+eig1_scaled <- (eig1 - min(eig1)) / (max(eig1)-min(eig1))
+eig2_scaled <- (eig2 - min(eig2)) / (max(eig2)-min(eig2))
+eig3_scaled<- (eig3 - min(eig3)) / (max(eig3)-min(eig3))
+
+imge1 <- matrix(eig1_scaled, 25, byrow=TRUE)
+imge2 <- matrix(eig2_scaled, 25, byrow=TRUE)
+imge3 <- matrix(eig3_scaled, 25, byrow=TRUE)
+
+image(imge1,col=gray.colors(256),main="",axes = F)
+image(imge2,col=gray.colors(256),main="",axes = F)
+image(imge3,col=gray.colors(256),main="",axes = F)
+
+```
 
