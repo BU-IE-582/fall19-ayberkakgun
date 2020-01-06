@@ -1,0 +1,236 @@
+---
+title: "IE 582 Project"
+author: "Ayberk AKGÜN, Çağatay KARABULUT, Gülce KARABACAK"
+date: "3/1/2020"
+output: html_document
+---
+# 1. INTRODUCTION
+
+The aim of this project was to predict the results of English Premier League matches in terms of "Home Win", "Draw" or "Away Win" by assigning probabilities to these 3 options. The task was more than a simple clustering, as the odds are categorical and draw is not so easy to predict.
+
+Homework 4, taught us that "matches" is not enough to predict the results by itself. Also one should keep in mind that, bet companies make good enough predictions to make money in the long term. However, in previous homeworks we showed (Homework 1) bet companies fail when one team is the clear underdog. So, our approach was to try to beat the odds of bet companies with proper adjustments.
+
+The data we used are bets data and matches data which is seperated to finished and unfinished as:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(tidyverse)
+library(data.table)
+matches<-read.csv("/Users/ayberkakgun/Desktop/bets/matches.csv") %>% filter(league_id==148)
+bets<-as.data.table(read.csv("/Users/ayberkakgun/Desktop/bets/bets.csv"))
+
+unfinished<-matches %>% filter(is.na(match_status))
+finished<-matches %>% filter(epoch<unfinished[1,]$epoch) %>% as.data.table()
+head(finished)
+head(unfinished)
+head(bets)
+```
+
+# 2. APPROACH
+
+We first calculated the probabilities assigned by bookmakers which is itself somewhat a good prediction and has the biggest weight on the final prediction.
+
+```{r hist1, echo=FALSE}
+week<-unfinished[1:10,]
+topredict<-week$match_id
+bets_book <- bets %>%
+  filter(variable=="odd_1" | variable=="odd_x" | variable=="odd_2") %>%
+  spread(variable, value) %>%
+  as.data.table()
+  bets_book[,p1:=1/odd_1]
+  bets_book[,p0:=1/odd_x]
+  bets_book[,p2:=1/odd_2]
+  bets_book[,psum:=p1+p2+p0]
+  bets_book[,p11:=p1/psum]
+  bets_book[,p00:=p0/psum]
+  bets_book[,p22:=p2/psum]
+  bets_book[,p12:=p11-p22]
+  
+    question<-bets_book %>%
+    filter(match_id %in%topredict) %>%
+    group_by(match_id) %>%
+    select(p11,p00,p22) %>%
+    mutate(mean1=mean(p11),mean2=mean(p22),mean0=mean(p00)) %>% ungroup() %>% select(match_id,mean1,mean2,mean0)%>% unique() %>%
+    as.data.table
+  colnames(question)<-c("match_id","mean1","mean2","mean0")  
+  
+  question
+
+```
+
+We then developed these predictions by;
+
+a) Past Match Results: 
+
+Results of the former games of teams give a good insight on how much the team will be succesful in the upcoming match.
+
+```{r hist2}
+  finished[,net_result:=match_hometeam_score - match_awayteam_score]
+  finished %>% select(match_hometeam_id,match_awayteam_id,match_hometeam_score,match_awayteam_score,net_result) %>% head()
+
+  i<-1
+  match<-question[match_id==unfinished[i,]$match_id]
+  home_team<-unfinished[i,]$match_hometeam_id
+  away_team<-unfinished[i,]$match_awayteam_id
+    
+    home_team_form<-finished %>%
+    filter(match_hometeam_id==home_team) %>%
+    mutate(m=mean(net_result)) %>%
+    select(m) %>%
+    unique()
+    print("Home Team Form in all matches")
+    home_team_form
+  
+    away_team_form<-finished %>%
+    filter(match_awayteam_id==away_team) %>%
+    mutate(m=mean(net_result)) %>%
+    select(m) %>%
+    unique()
+    print("Away Team Form in all matches")
+    away_team_form
+
+```
+
+b) Results of the last 5 games as a home team for the home team and the same for away team also give a good insight about the team's capability.
+
+```{r hist5}
+  finished[,net_result:=match_hometeam_score - match_awayteam_score]
+  finished %>% select(match_hometeam_id,match_awayteam_id,match_hometeam_score,match_awayteam_score,net_result) %>% head()
+
+  i<-1
+  match<-question[match_id==unfinished[i,]$match_id]
+  home_team<-unfinished[i,]$match_hometeam_id
+  away_team<-unfinished[i,]$match_awayteam_id
+    
+    home_team_form_last5<-finished %>%
+    filter(match_hometeam_id==home_team) %>%
+    tail() %>%
+    mutate(m=mean(net_result)) %>%
+    select(m) %>%
+    unique()
+    print("Home Team Form in last 5 Games")
+    home_team_form_last5
+  
+    away_team_form_last5<-finished %>%
+    filter(match_awayteam_id==away_team) %>%
+    tail() %>%
+    mutate(m=mean(net_result)) %>%
+    select(m) %>%
+    unique()
+    print("Away Team Form in last 5 Games")
+    away_team_form
+```
+
+c) Order of teams in the premier league and the points collected are also good indicators for a team's performance. To do so, we constructed league table based on the points collected from matches data:
+
+```{r hist17}
+  finished[,net_result:=match_hometeam_score - match_awayteam_score]
+  finished[net_result>0,home_point:=3]
+  finished[net_result>0,away_point:=0]
+  finished[net_result==0,home_point:=1]
+  finished[net_result==0,away_point:=1]
+  finished[net_result<0,home_point:=0]
+  finished[net_result<0,away_point:=3]
+  
+  home_points_<-finished %>%
+    group_by(match_hometeam_id) %>%
+    mutate(points=sum(home_point)) %>%
+    mutate(mean_home=mean(home_point)) %>%
+    select(points,mean_home) %>%
+    unique()
+  away_points_<-finished %>%
+    group_by(match_awayteam_id) %>%
+    mutate(points=sum(away_point)) %>%
+    mutate(mean_away=mean(away_point)) %>%
+    select(points,mean_away) %>%
+    unique()
+  colnames(home_points_)<-c("id","home_points","mean_home")
+  colnames(away_points_)<-c("id","away_points","mean_away")
+  points<-left_join(home_points_,away_points_) %>% as.data.table()
+  points[,total_points:=home_points+away_points]
+  setorder(points,-total_points)
+  points[,order:=1:20]
+  points
+  
+```
+
+
+We go on to calculate above mentioned home form of the home team, away form of the away team, home and away form in last 5 games and add the varibles that whether the team is one of the "elite" teams, point performance and order in the league table. Note that these data carry a potential to be highly correlated. That is fine in our contect as long as the weights on the final prediction are not very biased. 
+
+```{r hist3}
+  # all_matches<-data.table()
+  # for(i in 1:10){
+  i<-1
+  match<-question[match_id==unfinished[i,]$match_id,]
+  home_team<-unfinished[i,]$match_hometeam_id
+  away_team<-unfinished[i,]$match_awayteam_id
+  
+  match$home_form<-finished %>%
+    filter(match_hometeam_id==home_team) %>%
+    mutate(m=mean(net_result)) %>%
+    select(m) %>%
+    unique()
+  
+  match$away_form<-finished %>%
+    filter(match_awayteam_id==away_team) %>%
+    mutate(m=mean(net_result)) %>%
+    select(m) %>%
+    unique()
+  
+  match$home_late<-finished %>%
+    filter(match_hometeam_id==home_team) %>%
+    tail() %>%
+    mutate(m=mean(net_result)) %>%
+    select(m) %>%
+    unique()
+  
+  match$away_late<-finished %>%
+    filter(match_awayteam_id==away_team) %>%
+    tail() %>%
+    mutate(m=mean(net_result)) %>%
+    select(m) %>%
+    unique()
+    
+  match$home_big_team_margin<-0
+  match$away_big_team_margin<-0
+   
+  if(unfinished[i,]$match_hometeam_id%in%c("Manchester City","Manchester Utd","Liverpool","Chelsea","Tottenham")){
+        match$home_big_team_margin<-1}
+  if(unfinished[i,]$match_awayteam_id%in%c("Manchester City","Manchester Utd","Liverpool","Chelsea","Tottenham")){
+        match$away_big_team_margin<-1}
+  match$point_performance<-points[id==home_team,mean_home]-points[id==away_team,mean_away]
+  match$order_performance<-points[id==home_team,order]-points[id==away_team,order]
+  # all_matches<-rbind(all_matches,match,fill=T)
+  # }q
+  match
+
+```
+
+
+Our final predictions are based on combinations of these variables. First thing comes to mind is good old linear regression; but a better method would be lasso regression, with weights of the bet odds forced to be over some margin (i.e. 0.9). Possible improvements can be optimizations on these weights with the trial of different algorithms and evaluation of their results by the error terms.
+
+```{r summary}
+#optimum w parameters
+w1<-0.9
+w2<-0.05
+w3<-0.05
+w4<-0.1
+w5<-0.1
+w61<-0.2
+w62<-0.1
+w7<-0.15
+w8<-0.01
+
+final_prediction_1<-w1 * match$mean1 + w2 * match$home_form - w3 * match$away_form + w4 * match$home_late - w5 * match$away_late + w61* match$home_big_team_margin + w7 * match$point_performance + w8 * match$order_performance
+
+final_prediction_2<-w1 * match$mean2 + w2 * match$away_form - w3 * match$home_form + w4 * match$away_late - w5 * match$home_late + w62* match$away_big_team_margin - w7 * match$point_performance - w8 * match$order_performance
+
+final_prediction_0 <- 1 - final_prediction_1 - final_prediction_2
+```
+
+Our final prediction, compared to odds of bet companies for the selected match:
+
+```{r final pred}
+c(final_prediction_1, final_prediction_0, final_prediction_2)
+c(match$mean1,match$mean0,match$mean2)
+```
+
